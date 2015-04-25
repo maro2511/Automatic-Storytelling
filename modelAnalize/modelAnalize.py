@@ -3,6 +3,8 @@ import shutil
 import errno
 import time
 import graphlab as gl
+import json
+import time
 
 
 ##########################################
@@ -17,10 +19,10 @@ wordnetIdList = ['n09918554','n02336641','n13083586','n09381242','n07697537']
 
 imageSize = 64
 numOfTestImages = 100
-
+topk = 3
 
 numOfCategoriesList = [3]
-numOfImagesPerCategoryList = [500]
+numOfImagesPerCategoryList = [100]
 numOfIterationList = [1]
 ##########################################
 
@@ -96,11 +98,13 @@ def createClassificator(numOfCategories,numOfImagesPerCategory,numOfIteration):
 
 def	testClassificator(model,numOfCategories):
 	WORKING_DIR = os.getcwd() + '/TEST_IMAGES_%d' % (numOfCategories)
+	manager = ImageNetManager()
 	
 	validation_data = gl.image_analysis.load_images(WORKING_DIR, random_order=True)
 	validation_data['wnid'] = validation_data['path'].apply(lambda x: x.split('/')[-2])
 	validation_data['image'] = gl.image_analysis.resize(validation_data['image'], imageSize, imageSize)
-	
+	validation_data['text'] = validation_data['wnid'].apply(lambda x: manager.getNamebyWordNetId(x))
+		
 	unique_labels = validation_data['wnid'].unique().sort()                                              
 	class_map = {}                                                                  
 	for i in range(len(unique_labels)):                                                        
@@ -122,43 +126,86 @@ def testEnviroment():
 				model = createClassificator(numOfCategories,numOfImagesPerCategory,numOfIteration)
 				after_classificator_time = int(time.time() - start_time)
 				validation_data = testClassificator(model,numOfCategories)
-				after_test = int(time.time() - start_time)
-				result.append((numOfCategories,numOfImagesPerCategory,numOfIteration,start_time,after_classificator_time,after_test))
+				after_testClassificator = int(time.time() - start_time)
+				statistic_info = modelStatistics(model,validation_data,numOfCategories,numOfImagesPerCategory,numOfIteration)
+				after_statistic_info = int(time.time() - start_time)
+				result.append((numOfCategories,numOfImagesPerCategory,numOfIteration,start_time,after_classificator_time,after_testClassificator,after_statistic_info))
+				logFilesIndex()
 				print '\n' * 10
 	return (model,result,validation_data)
+
+def logFilesIndex():
+	logList = list()
+	for root, dirs, files in os.walk(os.getcwd() + '/AnalizeLogs/'):
+		for name in files:
+			logList += [{'path':os.path.join(root, name), 'name':(os.path.join(root, name)).split('/')[-1]}]
 	
+	with open(os.path.normpath('logIndex.txt'),'w+') as logHandle:
+		logHandle.write(json.dumps(logList) + '\n')
+		
 
 def printTimeResults(results):
 	print '#' * 10
 	print '# RESULTS!	'
 	print '#' * 10
 	for item in results:
-		print 'numOfCategories = %d ,numOfImagesPerCategory = %d ,numOfIteration = %d ,start_time = %d ,after_classificator_time = %d ,after_test = %d' % item
+		print 'numOfCategories = %d ,numOfImagesPerCategory = %d ,numOfIteration = %d ,start_time = %d ,after_classificator_time = %d ,after_testClassificator = %d, after_statistic_info = %d' % item
 		print '#'
 	print '###'
 
-def predict_image_url(path,topk):
+def predict_image_url(model,path):
 	image_sf = gl.SFrame({'image': [gl.Image(path)]})
 	image_sf['image'] = gl.image_analysis.resize(image_sf['image'], imageSize, imageSize)
-	top_labels = model.predict_topk(image_sf, k=topk)
-	#top_labels['class_text'] = top_labels['class'].apply(lambda x: label_to_text[x])
+	top_labels = model.predict_topk(image_sf, k=min(topk,5))
 	return top_labels
 	
-def modelStatistics(evaluationData):
-	topOneDict = dict()
-	topTwoDict = dict()
-	topThreeDict = dict()
-	topFourDict = dict()
-	topFiveDict = dict()
 	
+	
+def modelStatistics(model,validation_data,numOfCategories,numOfImagesPerCategory,numOfIteration):
+	if not os.path.exists(os.path.normpath('AnalizeLogs')):
+		os.makedirs(os.path.normpath('AnalizeLogs'))
+	
+	localtime = time.localtime(time.time())
+	logName = '%d_%d_%d_%d_%d_cat%d_img%d_iter%d.log' % (localtime[0],localtime[1],localtime[2],localtime[3],localtime[4],numOfCategories,numOfImagesPerCategory,numOfIteration)
+	with open(os.path.normpath('AnalizeLogs/' + logName),'w+') as logHandle:
+		logHandle.write('{"data": [\n')
+		flag = 0
+		for main_row in validation_data:
+			top_labels = predict_image_url(model,main_row['path'])
+			
+			data = dict()
+			class_seen_so_far = list()
+			total_so_far = 0
+			for row in range(5):
+				if row >= min(topk,5):
+					data['Top' + str(row+1)] = 1
+					data['Right' + str(row+1)] = '-'
+					continue
+					
+				total_so_far += top_labels[row]['score']
+				class_seen_so_far.append(top_labels[row]['class'])
+				data['Top' + str(row+1)] = round(total_so_far,2)
+				if main_row['label'] in class_seen_so_far:
+					#data['Right' + str(row+1)] = 'YES\n' + main_row['text']
+					data['Right' + str(row+1)] = 'YES'
+				else:
+					#data['Right' + str(row+1)] = 'NO\n' + main_row['text']
+					data['Right' + str(row+1)] = 'NO'
+			path = main_row['path'].split('/')
+			data['Image'] = ('<img src="' + '/' + path[4] + '/' + path[5] + '/' + path[6] + '"height="56" width="56"> ') 
+			if flag == 1: 
+				logHandle.write(',')
+			logHandle.write(json.dumps(data) + '\n')
+			flag = 1
+		logHandle.write(']}\n')
 	
 	return
 	
 	
 if __name__ == '__main__':      
-	downloadImages()
-	downloadTestImages(numOfTestImages)
+	#downloadImages()
+	#downloadTestImages(numOfTestImages)
 	(model,result,validation_data) = testEnviroment()
-	printTimeResults(results)
+	#printTimeResults(results)
 	
-#(model,result,validation_data) = ml.testEnviroment()
+	
