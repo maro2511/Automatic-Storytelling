@@ -35,6 +35,7 @@ class ImageNetManager:
 		else:    
 			for id in self.getSubTreeIdsForWordNetId(id):
 				try:
+					print 'z'
 					urlList += self.getUrlsForId(id)
 				except:
 					continue
@@ -66,7 +67,10 @@ class ImageNetManager:
 	# TODO: remove url from deleteList
 	def downloadImagesForId(self,id,urlList,WORKING_DIR, limit = -1, force = 'no'):
 		socket.setdefaulttimeout(3)
-		directory = os.path.normpath(WORKING_DIR +'\\'+ str(id))
+		directory = os.path.normpath(WORKING_DIR +'/'+ str(id))
+		print '***\n'
+		print 'downloading images to dir: ' + directory + '\n'
+		print '***\n'
 		urlListNum = len(urlList)
 		
 		if not os.path.exists(directory):
@@ -86,6 +90,7 @@ class ImageNetManager:
 				filePath = os.path.normpath(directory + '/' + url.split('/')[-1][:-2])
 				urllib.urlretrieve(url,filePath)
 				if imghdr.what(filePath) != 'jpeg':
+					print '-- Image delete (wrong format / not in server)'
 					deleteList += [url]
 					os.remove(filePath)
 				else:

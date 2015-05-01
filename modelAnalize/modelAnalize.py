@@ -19,11 +19,11 @@ wordnetIdList = ['n09918554','n02336641','n13083586','n09381242','n07697537']
 
 imageSize = 64
 numOfTestImages = 100
-topk = 3
+topk = 5
 
-numOfCategoriesList = [3]
-numOfImagesPerCategoryList = [100]
-numOfIterationList = [1]
+numOfCategoriesList = [5]
+numOfImagesPerCategoryList = [1000]
+numOfIterationList = [1,3]
 ##########################################
 
 def copyDir(src, dest):
@@ -48,9 +48,14 @@ def downloadImages():
 				os.makedirs(os.path.normpath(WORKING_DIR))        
 			for id in requestedIds:
 				if not os.path.exists(os.path.normpath(WORKING_DIR +'/'+ str(id))):
+					print 'a'
 					urlList = manager.getImagesUrlByWordNetId(id)
+					print 'b'
 					manager.downloadImagesForId(id,urlList,WORKING_DIR,limit = numOfImagesPerCategory)			
-			if (index < len(numOfCategoriesList)) :
+					print 'c'
+				else:
+					print 'No need to download images.'
+			if (index+1 < len(numOfCategoriesList)) :
 				NEXT_WORKING_DIR = list(WORKING_DIR)
 				NEXT_WORKING_DIR[len(os.getcwd())+8] = str(numOfCategoriesList[index+1])
 				NEXT_WORKING_DIR = "".join(NEXT_WORKING_DIR)
@@ -65,9 +70,9 @@ def downloadTestImages(numberOfTestImages):
     manager = ImageNetManager()
     for numOfCategories in numOfCategoriesList:
 		requestedIds = wordnetIdList[:numOfCategories]
-		for numOfImagesPerCategory in numOfImagesPerCategoryList:
-			WORKING_DIR = os.getcwd() + '/TEST_IMAGES_%d_%d' % (numOfCategories,numOfImagesPerCategory)
-			for id in requestedIds:
+		WORKING_DIR = os.getcwd() + '/TEST_IMAGES_%d' % (numOfCategories)
+		for id in requestedIds:
+			if not os.path.exists(os.path.normpath(WORKING_DIR +'/'+ str(id))):
 				urlList = manager.getImagesUrlByWordNetId(id)
 				manager.downloadImagesForId(id,urlList[::-1],WORKING_DIR,limit = numberOfTestImages)
 
@@ -81,7 +86,7 @@ def createClassificator(numOfCategories,numOfImagesPerCategory,numOfIteration):
 	unique_labels = train_sf['wnid'].unique().sort()                                             
 	class_map = {}                                                                  
 	for i in range(len(unique_labels)):                                                        
-		class_map[unique_labels[i]] = i                                                        
+		class_map[unique_labels[i]] = i
 	train_sf['label'] = train_sf['wnid'].apply(lambda x: class_map[x])
 	
 	print train_sf
@@ -103,16 +108,17 @@ def	testClassificator(model,numOfCategories):
 	validation_data = gl.image_analysis.load_images(WORKING_DIR, random_order=True)
 	validation_data['wnid'] = validation_data['path'].apply(lambda x: x.split('/')[-2])
 	validation_data['image'] = gl.image_analysis.resize(validation_data['image'], imageSize, imageSize)
-	validation_data['text'] = validation_data['wnid'].apply(lambda x: manager.getNamebyWordNetId(x))
 		
 	unique_labels = validation_data['wnid'].unique().sort()                                              
-	class_map = {}                                                                  
+	class_map = {}
+	class_to_text_map = {}
 	for i in range(len(unique_labels)):                                                        
-		class_map[unique_labels[i]] = i                                                        
+		class_map[unique_labels[i]] = i
+		class_to_text_map[str(i)] = manager.getNamebyWordNetId(unique_labels[i])
 	validation_data['label'] = validation_data['wnid'].apply(lambda x: class_map[x])
 	
 	print model.evaluate(validation_data)
-	return validation_data
+	return validation_data,class_to_text_map
 
 def testEnviroment():
 	result = list()
@@ -125,9 +131,9 @@ def testEnviroment():
 				start_time = int(time.time())
 				model = createClassificator(numOfCategories,numOfImagesPerCategory,numOfIteration)
 				after_classificator_time = int(time.time() - start_time)
-				validation_data = testClassificator(model,numOfCategories)
+				(validation_data,class_to_text_map) = testClassificator(model,numOfCategories)
 				after_testClassificator = int(time.time() - start_time)
-				statistic_info = modelStatistics(model,validation_data,numOfCategories,numOfImagesPerCategory,numOfIteration)
+				statistic_info = modelStatistics(model,validation_data,numOfCategories,numOfImagesPerCategory,numOfIteration,class_to_text_map)
 				after_statistic_info = int(time.time() - start_time)
 				result.append((numOfCategories,numOfImagesPerCategory,numOfIteration,start_time,after_classificator_time,after_testClassificator,after_statistic_info))
 				logFilesIndex()
@@ -161,10 +167,11 @@ def predict_image_url(model,path):
 	
 	
 	
-def modelStatistics(model,validation_data,numOfCategories,numOfImagesPerCategory,numOfIteration):
+def modelStatistics(model,validation_data,numOfCategories,numOfImagesPerCategory,numOfIteration,class_to_text_map):
 	if not os.path.exists(os.path.normpath('AnalizeLogs')):
 		os.makedirs(os.path.normpath('AnalizeLogs'))
 	
+	manager = ImageNetManager()
 	localtime = time.localtime(time.time())
 	logName = '%d_%d_%d_%d_%d_cat%d_img%d_iter%d.log' % (localtime[0],localtime[1],localtime[2],localtime[3],localtime[4],numOfCategories,numOfImagesPerCategory,numOfIteration)
 	with open(os.path.normpath('AnalizeLogs/' + logName),'w+') as logHandle:
@@ -176,20 +183,23 @@ def modelStatistics(model,validation_data,numOfCategories,numOfImagesPerCategory
 			data = dict()
 			class_seen_so_far = list()
 			total_so_far = 0
+			wnid_so_far = []
 			for row in range(5):
 				if row >= min(topk,5):
 					data['Top' + str(row+1)] = 1
 					data['Right' + str(row+1)] = '-'
+					data['wnid' + str(row+1)] = '-'
 					continue
 					
 				total_so_far += top_labels[row]['score']
 				class_seen_so_far.append(top_labels[row]['class'])
+				wnid_so_far += [class_to_text_map[str(top_labels[row]['class'])]]
+				
 				data['Top' + str(row+1)] = round(total_so_far,2)
+				data['wnid' + str(row+1)] = str(wnid_so_far)
 				if main_row['label'] in class_seen_so_far:
-					#data['Right' + str(row+1)] = 'YES\n' + main_row['text']
 					data['Right' + str(row+1)] = 'YES'
 				else:
-					#data['Right' + str(row+1)] = 'NO\n' + main_row['text']
 					data['Right' + str(row+1)] = 'NO'
 			path = main_row['path'].split('/')
 			data['Image'] = ('<img src="' + '/' + path[4] + '/' + path[5] + '/' + path[6] + '"height="56" width="56"> ') 
@@ -203,8 +213,8 @@ def modelStatistics(model,validation_data,numOfCategories,numOfImagesPerCategory
 	
 	
 if __name__ == '__main__':      
-	#downloadImages()
-	#downloadTestImages(numOfTestImages)
+	downloadImages()
+	downloadTestImages(numOfTestImages)
 	(model,result,validation_data) = testEnviroment()
 	#printTimeResults(results)
 	
