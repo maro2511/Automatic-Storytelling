@@ -86,7 +86,7 @@ class ImageNetManager:
 				goodImagesCounter += 1;
 				continue
 			try:
-				print 'Downloading image %d of %d: %s' % (index,urlListNum,url.split('/')[-1])
+				print 'Downloading image %d of %d: %s' % (index,urlListNum,url.split('/')[-1][:-1])
 				filePath = os.path.normpath(directory + '/' + url.split('/')[-1][:-2])
 				urllib.urlretrieve(url,filePath)
 				if imghdr.what(filePath) != 'jpeg':

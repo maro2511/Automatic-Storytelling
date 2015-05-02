@@ -170,10 +170,19 @@ def predict_image_url(model,path):
 def modelStatistics(model,validation_data,numOfCategories,numOfImagesPerCategory,numOfIteration,class_to_text_map):
 	if not os.path.exists(os.path.normpath('AnalizeLogs')):
 		os.makedirs(os.path.normpath('AnalizeLogs'))
+	if not os.path.exists(os.path.normpath('confusionLogs')):
+		os.makedirs(os.path.normpath('confusionLogs'))
 	
 	manager = ImageNetManager()
 	localtime = time.localtime(time.time())
+	
+	#Set log name "YEAR_MONTH_DAY_HOUR_MINUTE_#CATEGORIES_#IMAGES_#ITERATIONS.log"
 	logName = '%d_%d_%d_%d_%d_cat%d_img%d_iter%d.log' % (localtime[0],localtime[1],localtime[2],localtime[3],localtime[4],numOfCategories,numOfImagesPerCategory,numOfIteration)
+	
+	#Init 2D array for confusion_matrix_raw
+	confusion_matrix_raw = [[0 for j in range(numOfCategories)] for i in range(numOfCategories)]
+	
+	
 	with open(os.path.normpath('AnalizeLogs/' + logName),'w+') as logHandle:
 		logHandle.write('{"data": [\n')
 		flag = 0
@@ -203,12 +212,29 @@ def modelStatistics(model,validation_data,numOfCategories,numOfImagesPerCategory
 					data['Right' + str(row+1)] = 'NO'
 			path = main_row['path'].split('/')
 			data['Image'] = ('<img src="' + '/' + path[4] + '/' + path[5] + '/' + path[6] + '"height="56" width="56"> ') 
+			confusion_matrix_raw[main_row['label']][top_labels[0]['class']] += 1
+			
 			if flag == 1: 
 				logHandle.write(',')
 			logHandle.write(json.dumps(data) + '\n')
 			flag = 1
 		logHandle.write(']}\n')
-	
+
+		#process confusion_matrix_raw data		
+		flag = 0
+		with open(os.path.normpath('confusionLogs/' + logName),'w+') as logHandle2:
+			logHandle2.write('{"data": [\n')
+			for i in range(numOfCategories):
+				confusion_matrix = {}
+				confusion_matrix['-'] = class_to_text_map[str(i)]
+				for j in range(numOfCategories):
+					confusion_matrix[class_to_text_map[str(j)]] = confusion_matrix_raw[i][j]
+				if flag == 1: 
+					logHandle.write(',')
+				logHandle2.write(json.dumps(confusion_matrix) + '\n')
+				flag = 1
+			logHandle2.write(']}\n')
+		
 	return
 	
 	
