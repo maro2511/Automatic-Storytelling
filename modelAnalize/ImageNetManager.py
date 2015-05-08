@@ -35,7 +35,6 @@ class ImageNetManager:
 		else:    
 			for id in self.getSubTreeIdsForWordNetId(id):
 				try:
-					print 'z'
 					urlList += self.getUrlsForId(id)
 				except:
 					continue
@@ -82,14 +81,13 @@ class ImageNetManager:
 			if goodImagesCounter == limit:
 				break
 			if os.path.exists(os.path.normpath(directory + '/' + url.split('/')[-1][:-2])) and force == 'no':
-				print 'Image %d of %d already in memory - skip download' % (index,urlListNum)
-				goodImagesCounter += 1;
+				print 'Image %d of %d already in memory or there is another image with the same name - skip download' % (index,urlListNum)
 				continue
 			try:
 				print 'Downloading image %d of %d: %s' % (index,urlListNum,url.split('/')[-1][:-1])
 				filePath = os.path.normpath(directory + '/' + url.split('/')[-1][:-2])
 				urllib.urlretrieve(url,filePath)
-				if imghdr.what(filePath) != 'jpeg':
+				if (imghdr.what(filePath) != 'jpeg') or ('.jpg' not in filePath):
 					print '-- Image delete (wrong format / not in server)'
 					deleteList += [url]
 					os.remove(filePath)
@@ -101,3 +99,9 @@ class ImageNetManager:
 				continue
 		socket.setdefaulttimeout(20)
         
+		path = os.path.normpath('Optimization/' + str(id) + '.shu')
+		if os.path.isfile(path):
+			print "removing invalid urls from optimization files"
+			urlList = pickle.load(open(path,'rb'))
+			urlList = list(set(urlList) - set(deleteList))
+			pickle.dump(urlList, open(path,'wb'))
