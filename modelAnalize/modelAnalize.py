@@ -46,7 +46,7 @@ wordnetIdList = ['n09918554','n02336641','n13083586','n09381242','n07697537',"n0
 
 imageSize = 128
 numOfTestImages = 100
-topk = 2
+topk = 5
 
 numOfCategoriesList = [30]
 numOfImagesPerCategoryList = [1000]

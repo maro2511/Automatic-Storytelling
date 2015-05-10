@@ -87,7 +87,7 @@ class ImageNetManager:
 				print 'Downloading image %d of %d: %s' % (index,urlListNum,url.split('/')[-1][:-1])
 				filePath = os.path.normpath(directory + '/' + url.split('/')[-1][:-2])
 				urllib.urlretrieve(url,filePath)
-				if (imghdr.what(filePath) != 'jpeg') or ('.jpg' not in filePath):
+				if (imghdr.what(filePath) != 'jpeg') or (not (filePath.endswith('.jpg'))):
 					print '-- Image delete (wrong format / not in server)'
 					deleteList += [url]
 					os.remove(filePath)
