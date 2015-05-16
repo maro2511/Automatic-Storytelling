@@ -1,0 +1,32 @@
+
+#n09918554 = child
+#n02336641 = mouse
+#n13083586 = plant // this category was removed (too big: >2000000 images)
+#n09381242 = rock / mountain
+#n07697537 = hotdog
+#n00446980 - archery
+#n02687992 - airfield
+#n00449295 - racing
+#n00440747 - skiing
+#n02946921 - can
+#n09217230 - beach
+#n02110341 - dalmatian
+#n02087122 - dog (hunting)
+#n12985857 - coral fungus
+#n07727868 - green bean
+#n04079244 - building, edifice
+#n10129825 - girl
+#n06359193 - website
+#n06267145 - newspaper
+#n04217882 - signboard
+#n02958343 - car
+#n02883344 - box
+#n03346455 - fire,fireplace
+#n03147509 - cup
+#n04555897 - watch
+#n02818832 - bed
+#n07575726 - dinner
+#n09247410 - cloud
+#n02942699 - camera
+#n07679356 - bread
+#n07929519 - coffee
