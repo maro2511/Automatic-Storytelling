@@ -73176,7 +73176,7 @@ n13689984	Tongan monetary unit
 n13690109	pa'anga
 n13690214	seniti
 n13690321	Macao monetary unit
-n13690445	pataca
+n13690445	pataca
 n13690549	avo
 n13690650	Spanish monetary unit
 n13690758	peseta, Spanish peseta

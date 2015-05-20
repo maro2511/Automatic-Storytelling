@@ -164,13 +164,18 @@ class Classifier():
 
     #TODO: #fix accuracy values to percent
     def dumpStatisticsToLogFile(self):
+        print '>>dumpStatisticsToLogFile'
         if not os.path.exists(os.path.normpath('Statistics')):
             os.makedirs(os.path.normpath('Statistics'))
 
-            for i in range(5):
-                self.statistic_data.stats['acc' + str(i+1)] = round((self.statistic_data.stats['acc' + str(i+1)] / float(self.statistic_data.validation_data_len)),2)
+        for i in range(5):
+            self.statistic_data.stats['acc' + str(i+1)] = round((self.statistic_data.stats['acc' + str(i+1)] / float(self.statistic_data.validation_data_len)),2)
 
-            with open(os.path.normpath('Statistics/' + self.logName),'w+') as logHandle:
-                logHandle.write('{"data": [\n')
-                logHandle.write(json.dumps(self.statistic_data.stats) + '\n')
-                logHandle.write(']}\n')
+        with open(os.path.normpath('Statistics/' + self.logName),'w+') as logHandle:
+            logHandle.write('{"data": [\n')
+            logHandle.write(json.dumps(self.statistic_data.stats) + '\n')
+            logHandle.write(']}\n')
+        print '<<dumpStatisticsToLogFile'
+
+
+	
